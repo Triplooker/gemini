@@ -506,7 +506,7 @@ uninstall_node() {
     echo -e "${YELLOW}Выберите компоненты для удаления:${NC}"
     echo -e "1. Только текущую ноду Dria"
     echo -e "2. Ноду и Ollama"
-    echo -e "3. Полное удаление (нода, Docker, Ollama и все зависимости)"
+    echo -e "3. ${RED}Полное удаление Dria и Docker${NC} (может затронуть другие проекты!)"
     echo -e "4. Отмена"
     
     read -p "Выберите вариант (1-4): " remove_choice
@@ -530,10 +530,10 @@ uninstall_node() {
             rm -rf /usr/local/bin/ollama ~/.ollama
             ;;
         3)
-            echo -e "${RED}Внимание: Будут удалены все компоненты, включая Docker!${NC}"
-            echo -e "${RED}Это может затронуть другие ноды и приложения${NC}"
-            read -p "Вы уверены? (y/n): " confirm
-            if [[ $confirm == "y" ]]; then
+            echo -e "${RED}ВНИМАНИЕ: Это действие удалит Docker и может затронуть другие проекты!${NC}"
+            echo -e "${RED}Все контейнеры и образы будут удалены!${NC}"
+            read -p "Вы ТОЧНО уверены? Введите 'yes' для подтверждения: " confirm
+            if [[ $confirm == "yes" ]]; then
                 # Останавливаем процессы
                 pkill -f dkn-compute-launcher
                 screen -XS dria quit
