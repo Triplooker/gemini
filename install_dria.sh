@@ -8,6 +8,9 @@ NC='\033[0m' # No Color
 
 # В начале скрипта добавим глобальную переменную
 MODEL_CONFIG=""
+WALLET_KEY=""
+GEMINI_KEY=""
+OPENROUTER_KEY=""
 
 # В начале скрипта добавим установку expect
 apt-get install -y expect > /dev/null 2>&1
@@ -44,20 +47,28 @@ select_config() {
             models="10"  # Только gemini-1.5-flash
             echo -e "${GREEN}Выбрана модель: gemini-1.5-flash${NC}"
             echo -e "${YELLOW}Введите DKN Wallet Secret Key (32-bytes hex encoded):${NC}"
-            read -r wallet_key
+            read -r WALLET_KEY
             echo -e "${YELLOW}Введите Gemini API Key:${NC}"
-            read -r gemini_key
-            openrouter_key="\r"
+            read -r GEMINI_KEY
+            OPENROUTER_KEY="\r"
             ;;
         2) 
             models="2,48"
             echo -e "${YELLOW}Выбрана средняя конфигурация${NC}"
-            echo -e "Требования: 4-6 CPU, 16GB RAM"
+            echo -e "${YELLOW}Введите DKN Wallet Secret Key (32-bytes hex encoded):${NC}"
+            read -r WALLET_KEY
+            echo -e "${YELLOW}Введите OpenRouter API Key:${NC}"
+            read -r OPENROUTER_KEY
+            GEMINI_KEY="\r"
             ;;
         3) 
             models="17,24"
             echo -e "${RED}Выбрана тяжелая конфигурация${NC}"
-            echo -e "Требования: 8+ CPU, 32GB RAM"
+            echo -e "${YELLOW}Введите DKN Wallet Secret Key (32-bytes hex encoded):${NC}"
+            read -r WALLET_KEY
+            echo -e "${YELLOW}Введите OpenRouter API Key:${NC}"
+            read -r OPENROUTER_KEY
+            GEMINI_KEY="\r"
             ;;
         *) 
             echo -e "${RED}Неверный выбор!${NC}"
@@ -221,6 +232,13 @@ stop_processes() {
 run_node() {
     echo -e "${YELLOW}Проверка конфликтов перед запуском...${NC}"
     
+    # Проверяем наличие screen
+    if ! command -v screen &> /dev/null; then
+        echo -e "${YELLOW}Устанавливаем screen...${NC}"
+        apt-get update
+        apt-get install -y screen
+    fi
+    
     # Проверяем, выбрана ли конфигурация
     if [[ -z "$MODEL_CONFIG" ]]; then
         echo -e "${RED}Ошибка: Конфигурация не выбрана${NC}"
@@ -287,41 +305,6 @@ EOF
     
     echo -e "${YELLOW}Запуск Dria Node...${NC}"
     
-    # Определяем модели и API ключи в зависимости от конфигурации
-    case $MODEL_CONFIG in
-        1) 
-            models="10"  # Только gemini-1.5-flash
-            echo -e "${GREEN}Выбрана модель: gemini-1.5-flash${NC}"
-            echo -e "${YELLOW}Введите DKN Wallet Secret Key (32-bytes hex encoded):${NC}"
-            read -r wallet_key
-            echo -e "${YELLOW}Введите Gemini API Key:${NC}"
-            read -r gemini_key
-            openrouter_key="\r"
-            ;;
-        2)
-            models="2,48"
-            echo -e "${YELLOW}Выбраны модели: gpt4o, Qwen2_5coder7B${NC}"
-            echo -e "${YELLOW}Введите DKN Wallet Secret Key (32-bytes hex encoded):${NC}"
-            read -r wallet_key
-            echo -e "${YELLOW}Введите OpenRouter API Key:${NC}"
-            read -r openrouter_key
-            gemini_key="\r"
-            ;;
-        3)
-            models="17,24"
-            echo -e "${RED}Выбраны модели: ORLlama3_1_405B, ORQwen2_5Coder32B${NC}"
-            echo -e "${YELLOW}Введите DKN Wallet Secret Key (32-bytes hex encoded):${NC}"
-            read -r wallet_key
-            echo -e "${YELLOW}Введите OpenRouter API Key:${NC}"
-            read -r openrouter_key
-            gemini_key="\r"
-            ;;
-        *)
-            echo -e "${RED}Ошибка: Неверная конфигурация${NC}"
-            return 1
-            ;;
-    esac
-    
     # Создаем expect скрипт
     echo -e "${YELLOW}Создаем скрипт запуска...${NC}"
     cat > run_dria.exp << EOF
@@ -333,7 +316,7 @@ spawn ./dkn-compute-launcher
 
 # Ожидаем запрос DKN Wallet Secret Key
 expect "Please enter your DKN Wallet Secret Key"
-send "$wallet_key\r"
+send "$WALLET_KEY\r"
 
 # Ожидаем любой из возможных запросов и отвечаем на него
 expect {
@@ -342,11 +325,11 @@ expect {
         exp_continue
     }
     "Enter your Gemini API Key:" {
-        send "$gemini_key\r"
+        send "$GEMINI_KEY\r"
         exp_continue
     }
     "Enter your OpenRoute API Key:" {
-        send "$openrouter_key\r"
+        send "$OPENROUTER_KEY\r"
         exp_continue
     }
     "Enter your Jina API key" {
